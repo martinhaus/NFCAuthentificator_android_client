@@ -36,8 +36,9 @@ public class NfcService extends HostApduService {
 
     @Override
     public byte[] processCommandApdu(byte[] commandApdu, Bundle extras) {
-        Log.i(TAG, "Received APDU: " + ApduUtils.ByteArrayToHexString(commandApdu));
+//        Log.i(TAG, "Received APDU: " + ApduUtils.ByteArrayToHexString(commandApdu));
 
+        // Extract header and body of recieved APDU command into dedicated object
         ApduMessage apduMessage = ApduUtils.extractAPDUDataAndHeader(commandApdu);
 
         if (Arrays.equals(ApduUtils.HexStringToByteArray(ApduMessageHeader.REQUEST_PUBLIC_KEY), apduMessage.getHeader())) {
