@@ -21,11 +21,11 @@ public class RsaUtilsTest {
         String message = "Hello RSA test";
 
         KeyPair kp = RsaUtils.generateRSAKeys();
-        Cipher cipher = Cipher.getInstance("RSA");
+        Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
         cipher.init(Cipher.ENCRYPT_MODE, kp.getPublic());
         byte[] encryptedBytes = cipher.doFinal(message.getBytes());
 
-        Cipher cipher2 = Cipher.getInstance("RSA");
+        Cipher cipher2 = Cipher.getInstance("RSA/ECB/PKCS1Padding");
         cipher2.init(Cipher.DECRYPT_MODE, kp.getPrivate());
         byte[] decryptedBytes = cipher2.doFinal(encryptedBytes);
 
