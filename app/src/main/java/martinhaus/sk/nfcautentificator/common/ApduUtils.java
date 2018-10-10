@@ -1,5 +1,7 @@
 package martinhaus.sk.nfcautentificator.common;
 
+import java.io.UnsupportedEncodingException;
+import java.math.BigInteger;
 import java.util.Arrays;
 
 import martinhaus.sk.nfcautentificator.model.ApduMessage;
@@ -58,4 +60,12 @@ public class ApduUtils {
         return result;
     }
 
+    public static String toHex(String arg) {
+        try {
+            return String.format("%x", new BigInteger(1, arg.getBytes("UTF-8")));
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
 }

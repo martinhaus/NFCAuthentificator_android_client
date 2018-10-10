@@ -44,7 +44,7 @@ public class NfcService extends HostApduService {
     long bob_secret = 15;
     String aesKey;
     String sample_key = "24e042f7-5e43-4543-a614-4bdca32ee7c2";
-
+    String bob_computes;
     @Override
     public void onDeactivated(int reason) { }
 
@@ -102,6 +102,20 @@ public class NfcService extends HostApduService {
 
         }
 
+        if (Arrays.equals(HexStringToByteArray(ApduMessageHeader.REQUEST_OTP_DH), apduMessage.getHeader())) {
+            String encrypted = "";
+            try {
+                encrypted = AesUtils.encrypt(aesKey, sample_key);
+            } catch (UnsupportedEncodingException e) {
+                e.printStackTrace();
+            } catch (GeneralSecurityException e) {
+                e.printStackTrace();
+            }
+            System.out.println("AES encrypted " + encrypted);
+            return ApduUtils.ConcatArrays(encrypted.getBytes(StandardCharsets.UTF_8), SELECT_OK_SW);
+
+        }
+
         if (Arrays.equals(HexStringToByteArray(ApduMessageHeader.SEND_DH_N), apduMessage.getHeader())) {
 
             n = ByteArrayToAsciiString(apduMessage.getBody());
@@ -119,12 +133,17 @@ public class NfcService extends HostApduService {
             alice_sends = ByteArrayToAsciiString(apduMessage.getBody());
 
             System.out.println("ALICE SENDS: " + alice_sends);
-//            long bob_sends = (long) (Math.floor(Math.pow(Long.valueOf(g), bob_secret)) % Long.valueOf(n));
-//
-//            System.out.println("BOB SENDS: " + bob_sends);
-//            Log.i(TAG, "BOB SENDS: " + bob_sends);
+            long bob_sends = (long) (Math.floor(Math.pow(Long.valueOf(g), bob_secret)) % Long.valueOf(n));
+            bob_computes = String.valueOf((long) Math.floor(Math.pow(Long.valueOf(alice_sends), bob_secret) % Long.valueOf(n)));
 
-//            return ApduUtils.ConcatArrays(HexStringToByteArray(Long.toHexString(bob_sends)), SELECT_OK_SW);
+
+            System.out.println("BOB SENDS: " + bob_sends);
+            System.out.println("BOB COMPUTES: " + bob_computes);
+            aesKey = bob_computes;
+
+
+
+            return ApduUtils.ConcatArrays(HexStringToByteArray(ApduUtils.toHex(String.valueOf(bob_sends))), SELECT_OK_SW);
         }
 
 
