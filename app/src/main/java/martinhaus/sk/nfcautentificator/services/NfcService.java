@@ -8,20 +8,21 @@ import android.util.Base64;
 import android.util.Log;
 
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
 import java.security.spec.X509EncodedKeySpec;
-import java.sql.SQLOutput;
 import java.util.Arrays;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
-import javax.xml.transform.Source;
+import javax.crypto.spec.SecretKeySpec;
 
+import martinhaus.sk.nfcautentificator.common.AesUtils;
 import martinhaus.sk.nfcautentificator.common.ApduUtils;
 import martinhaus.sk.nfcautentificator.common.RsaUtils;
 import martinhaus.sk.nfcautentificator.model.ApduMessage;
@@ -35,12 +36,14 @@ import static martinhaus.sk.nfcautentificator.model.ApduResponseStatusWord.UNKNO
 
 public class NfcService extends HostApduService {
 
-    private static final String TAG = "CardService";
+    private static final String TAG = "NfcAuthService";
     KeyPair kp;
     String n;
     String g;
     String alice_sends;
     long bob_secret = 15;
+    String aesKey;
+    String sample_key = "24e042f7-5e43-4543-a614-4bdca32ee7c2";
 
     @Override
     public void onDeactivated(int reason) { }
@@ -79,12 +82,24 @@ public class NfcService extends HostApduService {
                 Cipher cipher1 = Cipher.getInstance("RSA/ECB/PKCS1Padding");
                 cipher1.init(Cipher.DECRYPT_MODE, kp.getPrivate());
                 byte[] decryptedBytes = cipher1.doFinal(decodedMessage);
-                String decrypted = new String(decryptedBytes);
-                Log.i(TAG, "Decrypted message: " + decrypted);
-
+                aesKey = new String(decryptedBytes);
             } catch (NoSuchAlgorithmException | InvalidKeyException | NoSuchPaddingException | BadPaddingException | IllegalBlockSizeException e) {
                 e.printStackTrace();
             }
+        }
+
+        if (Arrays.equals(HexStringToByteArray(ApduMessageHeader.REQUEST_OTP), apduMessage.getHeader())) {
+            String encrypted = "";
+            try {
+                encrypted = AesUtils.encrypt(aesKey, sample_key);
+            } catch (UnsupportedEncodingException e) {
+                e.printStackTrace();
+            } catch (GeneralSecurityException e) {
+                e.printStackTrace();
+            }
+            System.out.println("AES encrypted " + encrypted);
+            return ApduUtils.ConcatArrays(encrypted.getBytes(StandardCharsets.UTF_8), SELECT_OK_SW);
+
         }
 
         if (Arrays.equals(HexStringToByteArray(ApduMessageHeader.SEND_DH_N), apduMessage.getHeader())) {
@@ -117,7 +132,7 @@ public class NfcService extends HostApduService {
             Log.i(TAG, "Received message: " + ApduUtils.ByteArrayToAsciiString(commandApdu));
             return ApduUtils.ConcatArrays(HexStringToByteArray("FFFF"), SELECT_OK_SW);
         }
-        return UNKNOWN_CMD_SW;
+//        return UNKNOWN_CMD_SW;
     }
 
 
