@@ -8,7 +8,7 @@ public class ApduUtils {
 
     public static ApduMessage extractAPDUDataAndHeader(byte[] apduMessage) {
         byte[] APDUHeader = Arrays.copyOfRange(apduMessage, 0, 4);
-        byte[] APDUMessage = Arrays.copyOfRange(apduMessage, 5, apduMessage.length);
+        byte[] APDUMessage = Arrays.copyOfRange(apduMessage, 5, apduMessage.length - 1);
 
         return new ApduMessage(APDUHeader, APDUMessage);
     }

@@ -28,6 +28,7 @@ import martinhaus.sk.nfcautentificator.model.ApduMessage;
 import martinhaus.sk.nfcautentificator.model.ApduMessageHeader;
 
 import static martinhaus.sk.nfcautentificator.common.ApduUtils.ByteArrayToAsciiString;
+import static martinhaus.sk.nfcautentificator.common.ApduUtils.ByteArrayToHexString;
 import static martinhaus.sk.nfcautentificator.common.ApduUtils.HexStringToByteArray;
 import static martinhaus.sk.nfcautentificator.model.ApduResponseStatusWord.SELECT_OK_SW;
 import static martinhaus.sk.nfcautentificator.model.ApduResponseStatusWord.UNKNOWN_CMD_SW;
@@ -36,6 +37,10 @@ public class NfcService extends HostApduService {
 
     private static final String TAG = "CardService";
     KeyPair kp;
+    String n;
+    String g;
+    String alice_sends;
+    long bob_secret = 15;
 
     @Override
     public void onDeactivated(int reason) { }
@@ -81,6 +86,32 @@ public class NfcService extends HostApduService {
                 e.printStackTrace();
             }
         }
+
+        if (Arrays.equals(HexStringToByteArray(ApduMessageHeader.SEND_DH_N), apduMessage.getHeader())) {
+
+            n = ByteArrayToAsciiString(apduMessage.getBody());
+            System.out.println("N:" + n);
+
+        }
+        if (Arrays.equals(HexStringToByteArray(ApduMessageHeader.SEND_DH_G), apduMessage.getHeader())) {
+
+            g = ByteArrayToAsciiString(apduMessage.getBody());
+            System.out.println("G: " + g);
+        }
+
+        if (Arrays.equals(HexStringToByteArray(ApduMessageHeader.SEND_DH_ALICE), apduMessage.getHeader())) {
+
+            alice_sends = ByteArrayToAsciiString(apduMessage.getBody());
+
+            System.out.println("ALICE SENDS: " + alice_sends);
+//            long bob_sends = (long) (Math.floor(Math.pow(Long.valueOf(g), bob_secret)) % Long.valueOf(n));
+//
+//            System.out.println("BOB SENDS: " + bob_sends);
+//            Log.i(TAG, "BOB SENDS: " + bob_sends);
+
+//            return ApduUtils.ConcatArrays(HexStringToByteArray(Long.toHexString(bob_sends)), SELECT_OK_SW);
+        }
+
 
         else {
             Log.i(TAG, "Received message: " + ApduUtils.ByteArrayToAsciiString(commandApdu));
