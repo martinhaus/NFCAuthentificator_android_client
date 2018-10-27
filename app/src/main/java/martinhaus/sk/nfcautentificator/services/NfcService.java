@@ -8,6 +8,7 @@ import android.util.Base64;
 import android.util.Log;
 
 import java.io.UnsupportedEncodingException;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.InvalidKeyException;
@@ -38,10 +39,10 @@ public class NfcService extends HostApduService {
 
     private static final String TAG = "NfcAuthService";
     KeyPair kp;
-    String n;
-    String g;
-    String alice_sends;
-    long bob_secret = 15;
+    BigInteger n;
+    BigInteger g;
+    BigInteger alice_sends;
+    BigInteger bob_secret = new BigInteger("15");
     String aesKey;
     String sample_key = "24e042f7-5e43-4543-a614-4bdca32ee7c2";
     String bob_computes;
@@ -49,19 +50,19 @@ public class NfcService extends HostApduService {
     public void onDeactivated(int reason) { }
 
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     public byte[] processCommandApdu(byte[] commandApdu, Bundle extras) {
 
         // Extract header and body of recieved APDU command into dedicated object
         ApduMessage apduMessage = ApduUtils.extractAPDUDataAndHeader(commandApdu);
 
+        // Initial connection message
         if (Arrays.equals(HexStringToByteArray(ApduMessageHeader.SELECT_APDU_HEADER), apduMessage.getHeader())) {
             return SELECT_OK_SW;
         }
 
+        // Request for sending public key from this device
         if (Arrays.equals(HexStringToByteArray(ApduMessageHeader.REQUEST_PUBLIC_KEY), apduMessage.getHeader())) {
-            Log.i(TAG, "Request for PK creation");
             String pkey = "";
             try {
                 kp = RsaUtils.generateRSAKeys();
@@ -70,10 +71,10 @@ public class NfcService extends HostApduService {
             } catch (NoSuchAlgorithmException | UnsupportedEncodingException e) {
                 e.printStackTrace();
             }
-            Log.i(TAG, "PK  " + kp.getPrivate());
             return ApduUtils.ConcatArrays((pkey.getBytes()), SELECT_OK_SW);
         }
 
+        // Receive AES key from the reader
         if (Arrays.equals(HexStringToByteArray(ApduMessageHeader.SEND_AES_KEY), apduMessage.getHeader())) {
 
             byte[] decodedMessage = Base64.decode(apduMessage.getBody(), Base64.DEFAULT);
@@ -88,70 +89,42 @@ public class NfcService extends HostApduService {
             }
         }
 
+        // Request for OTP
         if (Arrays.equals(HexStringToByteArray(ApduMessageHeader.REQUEST_OTP), apduMessage.getHeader())) {
             String encrypted = "";
             try {
                 encrypted = AesUtils.encrypt(aesKey, sample_key);
-            } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
-            } catch (GeneralSecurityException e) {
+            } catch (UnsupportedEncodingException | GeneralSecurityException e) {
                 e.printStackTrace();
             }
-            System.out.println("AES encrypted " + encrypted);
             return ApduUtils.ConcatArrays(encrypted.getBytes(StandardCharsets.UTF_8), SELECT_OK_SW);
 
         }
 
-        if (Arrays.equals(HexStringToByteArray(ApduMessageHeader.REQUEST_OTP_DH), apduMessage.getHeader())) {
-            String encrypted = "";
-            try {
-                encrypted = AesUtils.encrypt(aesKey, sample_key);
-            } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
-            } catch (GeneralSecurityException e) {
-                e.printStackTrace();
-            }
-            System.out.println("AES encrypted " + encrypted);
-            return ApduUtils.ConcatArrays(encrypted.getBytes(StandardCharsets.UTF_8), SELECT_OK_SW);
-
-        }
-
+        // Receive prime and primitive root modulo from the reader to be used in DH key exchange
         if (Arrays.equals(HexStringToByteArray(ApduMessageHeader.SEND_DH_N), apduMessage.getHeader())) {
-
-            n = ByteArrayToAsciiString(apduMessage.getBody());
-            System.out.println("N:" + n);
-
+            n = new BigInteger(ByteArrayToAsciiString(apduMessage.getBody()));
         }
         if (Arrays.equals(HexStringToByteArray(ApduMessageHeader.SEND_DH_G), apduMessage.getHeader())) {
-
-            g = ByteArrayToAsciiString(apduMessage.getBody());
-            System.out.println("G: " + g);
+            g = new BigInteger(ByteArrayToAsciiString(apduMessage.getBody()));
         }
 
         if (Arrays.equals(HexStringToByteArray(ApduMessageHeader.SEND_DH_ALICE), apduMessage.getHeader())) {
 
-            alice_sends = ByteArrayToAsciiString(apduMessage.getBody());
+            alice_sends = new BigInteger(ByteArrayToAsciiString(apduMessage.getBody()));
 
-            System.out.println("ALICE SENDS: " + alice_sends);
-            long bob_sends = (long) (Math.floor(Math.pow(Long.valueOf(g), bob_secret)) % Long.valueOf(n));
-            bob_computes = String.valueOf((long) Math.floor(Math.pow(Long.valueOf(alice_sends), bob_secret) % Long.valueOf(n)));
+            BigInteger bob_sends = g.modPow(bob_secret, n);
+            bob_computes = String.valueOf(alice_sends.modPow(bob_secret, n));
 
-
-            System.out.println("BOB SENDS: " + bob_sends);
-            System.out.println("BOB COMPUTES: " + bob_computes);
             aesKey = bob_computes;
-
-
 
             return ApduUtils.ConcatArrays(HexStringToByteArray(ApduUtils.toHex(String.valueOf(bob_sends))), SELECT_OK_SW);
         }
 
-
+        // Command not recognized
         else {
-            Log.i(TAG, "Received message: " + ApduUtils.ByteArrayToAsciiString(commandApdu));
-            return ApduUtils.ConcatArrays(HexStringToByteArray("FFFF"), SELECT_OK_SW);
+            return ApduUtils.ConcatArrays(HexStringToByteArray(""), UNKNOWN_CMD_SW);
         }
-//        return UNKNOWN_CMD_SW;
     }
 
 

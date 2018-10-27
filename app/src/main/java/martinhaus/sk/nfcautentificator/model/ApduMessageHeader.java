@@ -9,5 +9,4 @@ public class ApduMessageHeader {
     public static final String SEND_DH_ALICE = "00130400";
     public static final String REQUEST_DH_BOB = "00140400";
     public static final String REQUEST_OTP = "00041000";
-    public static final String REQUEST_OTP_DH = "00042000";
 }
