@@ -38,7 +38,7 @@ public class AesUtils {
     }
 
     public static byte[] encrypt(final SecretKeySpec key, final byte[] iv, final byte[] message) throws GeneralSecurityException {
-        final Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+        final Cipher cipher = Cipher.getInstance("AES/ECB/PKCS7Padding");
         IvParameterSpec ivSpec = new IvParameterSpec(iv);
         cipher.init(Cipher.ENCRYPT_MODE, key);
         return cipher.doFinal(message);

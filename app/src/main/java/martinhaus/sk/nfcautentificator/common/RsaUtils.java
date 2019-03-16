@@ -14,20 +14,19 @@ import java.security.cert.CertificateException;
 
 public class RsaUtils {
 
-    public static void generateRSAKeys() throws NoSuchAlgorithmException, CertificateException, IOException, KeyStoreException, NoSuchProviderException, InvalidAlgorithmParameterException {
+    public static void generateRSAKeys(String alias) throws NoSuchAlgorithmException, CertificateException, IOException, KeyStoreException, NoSuchProviderException, InvalidAlgorithmParameterException {
         KeyStore keyStore = KeyStore.getInstance("AndroidKeyStore");
         keyStore.load(null);
-
-        String alias = "nfc_rsa_kp";
 
         KeyPairGenerator kpg = KeyPairGenerator.getInstance(
                 KeyProperties.KEY_ALGORITHM_RSA, "AndroidKeyStore");
 
         kpg.initialize(new KeyGenParameterSpec.Builder(
-                alias, KeyProperties.PURPOSE_DECRYPT)
+                alias, KeyProperties.PURPOSE_DECRYPT | KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_VERIFY | KeyProperties.PURPOSE_SIGN )
                 .setKeySize(2048)
                 .setDigests(KeyProperties.DIGEST_SHA256)
                 .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_RSA_PKCS1)
+                .setSignaturePaddings(KeyProperties.SIGNATURE_PADDING_RSA_PKCS1)
                 .build());
         kpg.generateKeyPair();
     }

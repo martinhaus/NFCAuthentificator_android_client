@@ -18,6 +18,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.Signature;
 import java.security.UnrecoverableEntryException;
 import java.security.cert.CertificateException;
 import java.security.spec.X509EncodedKeySpec;
@@ -76,18 +77,18 @@ public class NfcService extends HostApduService {
                 ks.load(null);
 
                 if (!ks.containsAlias(alias)) {
-                    RsaUtils.generateRSAKeys();
+                    RsaUtils.generateRSAKeys(alias);
                 }
-                    KeyStore.PrivateKeyEntry privateKeyEntry = (KeyStore.PrivateKeyEntry) ks.getEntry(alias, null);
-                    PublicKey publicKey = (PublicKey) privateKeyEntry.getCertificate().getPublicKey();
-                    X509EncodedKeySpec x509EncodedKeySpec = new X509EncodedKeySpec(publicKey.getEncoded());
-                    pkey =  new String(Base64.encode(x509EncodedKeySpec.getEncoded(), Base64.NO_WRAP), "UTF-8");
+                KeyStore.PrivateKeyEntry privateKeyEntry = (KeyStore.PrivateKeyEntry) ks.getEntry(alias, null);
+                PublicKey publicKey = (PublicKey) privateKeyEntry.getCertificate().getPublicKey();
+                X509EncodedKeySpec x509EncodedKeySpec = new X509EncodedKeySpec(publicKey.getEncoded());
+                pkey =  new String(Base64.encode(x509EncodedKeySpec.getEncoded(), Base64.NO_WRAP), "UTF-8");
             }
             catch (UnrecoverableEntryException | NoSuchAlgorithmException | InvalidAlgorithmParameterException | NoSuchProviderException | IOException | CertificateException | KeyStoreException e) {
                 e.printStackTrace();
             }
             return ApduUtils.ConcatArrays((pkey.getBytes()), SELECT_OK_SW);
-    }
+        }
 
         // Receive AES key from the reader
         if (Arrays.equals(HexStringToByteArray(ApduMessageHeader.SEND_AES_KEY), apduMessage.getHeader())) {
@@ -140,7 +141,56 @@ public class NfcService extends HostApduService {
             return ApduUtils.ConcatArrays(HexStringToByteArray(ApduUtils.toHex(String.valueOf(bob_sends))), SELECT_OK_SW);
         }
 
-        // Command not recognized
+        if (Arrays.equals(HexStringToByteArray(ApduMessageHeader.REQUEST_SIGNING_PUB_KEY), apduMessage.getHeader())) {
+            String alias = "nfc_signing_kp";
+            String pkey = "";
+            String encrypted = "";
+            try {
+                ks = KeyStore.getInstance("AndroidKeyStore");
+                ks.load(null);
+
+
+                RsaUtils.generateRSAKeys(alias);
+
+                KeyStore.PrivateKeyEntry privateKeyEntry = (KeyStore.PrivateKeyEntry) ks.getEntry(alias, null);
+                PublicKey publicKey = (PublicKey) privateKeyEntry.getCertificate().getPublicKey();
+                X509EncodedKeySpec x509EncodedKeySpec = new X509EncodedKeySpec(publicKey.getEncoded());
+                pkey =  new String(Base64.encode(x509EncodedKeySpec.getEncoded(), Base64.NO_WRAP), StandardCharsets.UTF_8);
+                encrypted = AesUtils.encrypt(aesKey, pkey);
+            }
+            catch (IOException | GeneralSecurityException e) {
+                e.printStackTrace();
+            }
+            return ApduUtils.ConcatArrays((encrypted.getBytes()), SELECT_OK_SW);
+        }
+
+        if (Arrays.equals(HexStringToByteArray(ApduMessageHeader.REQUEST_SIGNED_CHALLANGE), apduMessage.getHeader())) {
+            String encrypted = "";
+
+            String alias = "nfc_signing_kp";
+            try {
+                // Retrieve the keys
+                KeyStore.PrivateKeyEntry privateKeyEntry = (KeyStore.PrivateKeyEntry) ks.getEntry(alias, null);
+                PrivateKey privateKey = privateKeyEntry.getPrivateKey();
+
+                Signature sig = Signature.getInstance("SHA256withRSA");
+                sig.initSign(privateKey);
+                sig.update(sample_key.getBytes("UTF-8"));
+                byte[] signedBytes = sig.sign();
+
+                String encoded = Base64.encodeToString(signedBytes, Base64.NO_WRAP);
+
+                encrypted = AesUtils.encrypt(aesKey, Base64.encodeToString(signedBytes, Base64.NO_WRAP));
+            }
+            catch (UnsupportedEncodingException e) {
+                    e.printStackTrace();
+            } catch (GeneralSecurityException e) {
+                e.printStackTrace();
+            }
+            return ApduUtils.ConcatArrays(encrypted.getBytes(StandardCharsets.UTF_8), SELECT_OK_SW);
+        }
+
+            // Command not recognized
         else {
             return ApduUtils.ConcatArrays(HexStringToByteArray(""), UNKNOWN_CMD_SW);
         }

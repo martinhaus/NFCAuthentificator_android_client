@@ -9,4 +9,8 @@ public class ApduMessageHeader {
     public static final String SEND_DH_ALICE = "00130400";
     public static final String REQUEST_DH_BOB = "00140400";
     public static final String REQUEST_OTP = "00041000";
+    public static final String REQUEST_SIGNING_PUB_KEY = "00150000";
+    public static final String REQUEST_SIGNED_CHALLANGE = "00160000";
+    public static final String REQUEST_ECC_PUBLIC_KEY = "";
+    public static final String SEND_AES_KEY_ECC = "";
 }
