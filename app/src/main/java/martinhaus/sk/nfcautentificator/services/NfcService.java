@@ -52,6 +52,7 @@ public class NfcService extends HostApduService {
     String sample_key = "24e042f7-5e43-4543-a614-4bdca32ee7c2";
     String bob_computes;
     KeyStore ks;
+    String alias;
     @Override
     public void onDeactivated(int reason) { }
 
@@ -71,13 +72,21 @@ public class NfcService extends HostApduService {
         if (Arrays.equals(HexStringToByteArray(ApduMessageHeader.REQUEST_PUBLIC_KEY), apduMessage.getHeader())) {
             String pkey = "";
 
-            String alias = "nfc_rsa_kp";
+            alias = "nfc_rsa_kp_1024";
+            int keySize = 1024;
+
+            if (ApduUtils.ByteArrayToAsciiString(apduMessage.getBody()).equals("2048")) {
+                alias = "nfc_rsa_kp_2048";
+                keySize = 2048;
+
+            }
+
             try {
                 ks = KeyStore.getInstance("AndroidKeyStore");
                 ks.load(null);
 
                 if (!ks.containsAlias(alias)) {
-                    RsaUtils.generateRSAKeys(alias);
+                    RsaUtils.generateRSAKeys(alias, keySize);
                 }
                 KeyStore.PrivateKeyEntry privateKeyEntry = (KeyStore.PrivateKeyEntry) ks.getEntry(alias, null);
                 PublicKey publicKey = (PublicKey) privateKeyEntry.getCertificate().getPublicKey();
@@ -85,6 +94,7 @@ public class NfcService extends HostApduService {
                 pkey =  new String(Base64.encode(x509EncodedKeySpec.getEncoded(), Base64.NO_WRAP), "UTF-8");
             }
             catch (UnrecoverableEntryException | NoSuchAlgorithmException | InvalidAlgorithmParameterException | NoSuchProviderException | IOException | CertificateException | KeyStoreException e) {
+                e.printStackTrace();
                 e.printStackTrace();
             }
             return ApduUtils.ConcatArrays((pkey.getBytes()), SELECT_OK_SW);
@@ -94,7 +104,13 @@ public class NfcService extends HostApduService {
         if (Arrays.equals(HexStringToByteArray(ApduMessageHeader.SEND_AES_KEY), apduMessage.getHeader())) {
 
             byte[] decodedMessage = Base64.decode(apduMessage.getBody(), Base64.DEFAULT);
-            String alias = "nfc_rsa_kp";
+
+//            String alias = "nfc_rsa_kp_1024";
+//
+//            if (ApduUtils.ByteArrayToAsciiString(apduMessage.getBody()).equals("2048")) {
+//                alias = "nfc_rsa_kp_2048";
+//            }
+
             try {
                 // Retrieve the keys
                 KeyStore.PrivateKeyEntry privateKeyEntry = (KeyStore.PrivateKeyEntry) ks.getEntry(alias, null);
@@ -150,7 +166,7 @@ public class NfcService extends HostApduService {
                 ks.load(null);
 
 
-                RsaUtils.generateRSAKeys(alias);
+                RsaUtils.generateRSAKeys(alias, 1024);
 
                 KeyStore.PrivateKeyEntry privateKeyEntry = (KeyStore.PrivateKeyEntry) ks.getEntry(alias, null);
                 PublicKey publicKey = (PublicKey) privateKeyEntry.getCertificate().getPublicKey();
