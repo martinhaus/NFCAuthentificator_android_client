@@ -185,6 +185,8 @@ public class NfcService extends HostApduService {
 
             String alias = "nfc_signing_kp";
             try {
+                ks = KeyStore.getInstance("AndroidKeyStore");
+                ks.load(null);
                 // Retrieve the keys
                 KeyStore.PrivateKeyEntry privateKeyEntry = (KeyStore.PrivateKeyEntry) ks.getEntry(alias, null);
                 PrivateKey privateKey = privateKeyEntry.getPrivateKey();
@@ -201,6 +203,8 @@ public class NfcService extends HostApduService {
             catch (UnsupportedEncodingException e) {
                     e.printStackTrace();
             } catch (GeneralSecurityException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
                 e.printStackTrace();
             }
             return ApduUtils.ConcatArrays(encrypted.getBytes(StandardCharsets.UTF_8), SELECT_OK_SW);
